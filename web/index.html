@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sketch AI - Photo to Hand-Drawn Sketch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Complete CSS - dark theme, modern design */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a24;
+      --surface2: #22222f;
+      --border: #2e2e3e;
+      --accent: #6c63ff;
+      --accent-hover: #7c74ff;
+      --text: #e8e8f0;
+      --text-muted: #888899;
+      --success: #4ade80;
+      --error: #f87171;
+      --radius: 12px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { padding: 2rem; text-align: center; border-bottom: 1px solid var(--border); }
+    .logo { font-size: 2rem; font-weight: 700; color: var(--text); }
+    .logo span { color: var(--accent); }
+    .subtitle { color: var(--text-muted); margin-top: 0.5rem; font-size: 1rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1rem; }
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: var(--surface);
+      margin-bottom: 2rem;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--accent);
+      background: var(--surface2);
+    }
+    .upload-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .upload-text { color: var(--text-muted); font-size: 0.95rem; }
+    .upload-text strong { color: var(--text); }
+    #file-input { display: none; }
+    .canvases {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 640px) { .canvases { grid-template-columns: 1fr; } }
+    .canvas-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .canvas-label {
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      background: var(--surface2);
+    }
+    .controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .style-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      flex: 1;
+      min-width: 160px;
+    }
+    .style-select:focus { outline: 2px solid var(--accent); }
+    .btn {
+      padding: 0.65rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) { background: var(--surface2); }
+    .stats-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stats-bar span { display: flex; align-items: center; gap: 0.4rem; }
+    .stats-bar .val { color: var(--text); font-weight: 600; }
+    .error-msg {
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 8px;
+      color: var(--error);
+      font-size: 0.9rem;
+      display: none;
+    }
+    /* Spinner overlay */
+    .spinner-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      display: none;
+    }
+    .spinner-overlay.active { display: flex; }
+    .spinner-box {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 2rem 2.5rem;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text { color: var(--text-muted); font-size: 0.9rem; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Sketch<span>AI</span></div>
+    <p class="subtitle">Transform photos into hand-drawn sketches — runs entirely in your browser</p>
+  </header>
+
+  <main>
+    <div class="upload-area" id="upload-area">
+      <div class="upload-icon">🖼️</div>
+      <p class="upload-text">
+        <strong>Click to upload</strong> or drag &amp; drop a photo<br />
+        Supports JPG, PNG, WEBP
+      </p>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" />
+    </div>
+
+    <div class="canvases">
+      <div class="canvas-card">
+        <div class="canvas-label">Original Photo</div>
+        <canvas id="original-canvas" width="256" height="256"></canvas>
+      </div>
+      <div class="canvas-card">
+        <div class="canvas-label">Sketch Result</div>
+        <canvas id="sketch-canvas" width="256" height="256"></canvas>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select class="style-select" id="style-select">
+        <optgroup label="─── B&W Styles ───">
+          <option value="0">✏️ Pencil Sketch</option>
+          <option value="1">🪨 Charcoal</option>
+          <option value="2">🖊️ Ink Drawing</option>
+          <option value="3">📏 Technical Sketch</option>
+          <option value="4">📐 Line Art</option>
+        </optgroup>
+        <optgroup label="─── Color Styles ───">
+          <option value="5">🎨 Oil Painting</option>
+          <option value="6">🖍️ Colored Pencil</option>
+          <option value="7">🖍️ Crayon</option>
+          <option value="8">💧 Watercolor</option>
+        </optgroup>
+      </select>
+      <button class="btn btn-primary" id="generate-btn" disabled>Generate Sketch</button>
+      <button class="btn btn-secondary" id="download-btn" disabled>Download PNG</button>
+    </div>
+
+    <div class="stats-bar">
+      <span>Style: <span class="val" id="stat-style">—</span></span>
+      <span>Inference: <span class="val" id="stat-time">—</span></span>
+      <span>Model: <span class="val" id="stat-model">Loading...</span></span>
+      <span>Status: <span class="val" id="stat-status">Loading model...</span></span>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+  </main>
+
+  <footer>
+    Sketch AI &mdash; Powered by ONNX Runtime Web &amp; MobileNetV3 + U-Net
+  </footer>
+
+  <div class="spinner-overlay" id="spinner">
+    <div class="spinner-box">
+      <div class="spinner"></div>
+      <p class="spinner-text" id="spinner-text">Running inference...</p>
+    </div>
+  </div>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
